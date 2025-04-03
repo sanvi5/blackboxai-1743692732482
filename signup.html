@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicine Reminder - Sign Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="config.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .bg-medical { 
+      background-image: url('https://images.pexels.com/photos/3761509/pexels-photo-3761509.jpeg');
+      background-size: cover;
+      background-position: center;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-50">
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-lg shadow-xl overflow-hidden">
+      <div class="h-32 bg-medical relative">
+        <div class="absolute inset-0 bg-blue-600 opacity-75"></div>
+        <div class="relative p-6">
+          <h1 class="text-2xl font-bold text-white">Create Account</h1>
+          <p class="text-blue-100">Set up your medicine reminders</p>
+        </div>
+      </div>
+      
+      <div class="p-6">
+        <form id="signupForm" class="space-y-6">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <input type="text" id="name" required
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" id="email" required
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" id="password" required minlength="6"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            <p class="mt-1 text-xs text-gray-500">Minimum 6 characters</p>
+          </div>
+          
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <input type="password" id="confirmPassword" required
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label for="age" class="block text-sm font-medium text-gray-700">Age (Optional)</label>
+            <input type="number" id="age" min="1" max="120"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label for="condition" class="block text-sm font-medium text-gray-700">Medical Condition (Optional)</label>
+            <select id="condition" 
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Select condition</option>
+              <option value="diabetes">Diabetes</option>
+              <option value="hypertension">Hypertension</option>
+              <option value="asthma">Asthma</option>
+              <option value="arthritis">Arthritis</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="flex items-center">
+            <input id="terms" name="terms" type="checkbox" required
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+            <label for="terms" class="ml-2 block text-sm text-gray-700">
+              I agree to the <a href="#" class="text-blue-600 hover:text-blue-500">Terms of Service</a> and <a href="#" class="text-blue-600 hover:text-blue-500">Privacy Policy</a>
+            </label>
+          </div>
+          
+          <div>
+            <button type="submit" 
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Create Account
+            </button>
+          </div>
+        </form>
+        
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">
+            Already have an account? 
+            <a href="login.html" class="font-medium text-blue-600 hover:text-blue-500">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('signupForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      if (password !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+      
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const condition = document.getElementById('condition').value;
+      
+      auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          // Save additional user data to Firestore
+          return db.collection('users').doc(userCredential.user.uid).set({
+            name: name,
+            email: email,
+            age: age || null,
+            condition: condition || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            emergencyContacts: []
+          });
+        })
+        .then(() => {
+          window.location.href = 'dashboard.html';
+        })
+        .catch((error) => {
+          alert(error.message);
+        });
+    });
+  </script>
+</body>
+</html>
