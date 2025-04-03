@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicine Reminder - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .bg-medical {
+      background-image: url('https://images.pexels.com/photos/3764441/pexels-photo-3764441.jpeg');
+      background-size: cover;
+      background-position: center;
+    }
+    .sidebar {
+      transition: all 0.3s;
+    }
+    .sidebar.collapsed {
+      width: 5rem;
+    }
+    .sidebar.collapsed .sidebar-text {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar bg-white w-64 shadow-lg flex flex-col">
+      <div class="p-4 flex items-center justify-between border-b">
+        <div class="flex items-center">
+          <i class="fas fa-pills text-blue-600 text-2xl mr-3"></i>
+          <span class="sidebar-text font-bold text-xl">MedReminder</span>
+        </div>
+        <button id="toggleSidebar" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto">
+        <nav class="p-4">
+          <div class="space-y-2">
+            <a href="#" class="flex items-center p-2 text-blue-600 bg-blue-50 rounded-lg">
+              <i class="fas fa-home mr-3"></i>
+              <span class="sidebar-text">Dashboard</span>
+            </a>
+            <a href="add_reminder.html" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-plus-circle mr-3"></i>
+              <span class="sidebar-text">Add Reminder</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-history mr-3"></i>
+              <span class="sidebar-text">History</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-user mr-3"></i>
+              <span class="sidebar-text">Profile</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-phone-alt mr-3"></i>
+              <span class="sidebar-text">Emergency Contacts</span>
+            </a>
+          </div>
+        </nav>
+      </div>
+      
+      <div class="p-4 border-t">
+        <button id="signOutBtn" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg w-full">
+          <i class="fas fa-sign-out-alt mr-3"></i>
+          <span class="sidebar-text">Sign Out</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto">
+      <!-- Top Navigation -->
+      <header class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex items-center justify-between">
+          <h1 class="text-xl font-semibold text-gray-800">Dashboard</h1>
+          <div class="flex items-center space-x-4">
+            <div class="relative">
+              <i class="fas fa-bell text-gray-500 text-xl"></i>
+              <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+            </div>
+            <div class="flex items-center">
+              <img id="userAvatar" class="h-8 w-8 rounded-full" src="https://ui-avatars.com/api/?name=User&background=2563EB&color=fff" alt="User">
+              <span id="userName" class="ml-2 text-sm font-medium text-gray-700">User</span>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <main class="p-6">
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-6 text-white">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold" id="welcomeMessage">Welcome back, User!</h2>
+              <p class="mt-1">You have <span id="pendingReminders" class="font-bold">0</span> upcoming medicine reminders today</p>
+            </div>
+            <button class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50">
+              Add Reminder
+            </button>
+          </div>
+        </div>
+        
+        <!-- Upcoming Reminders -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-800">Upcoming Reminders</h3>
+              <a href="#" class="text-sm text-blue-600 hover:text-blue-500">View All</a>
+            </div>
+            
+            <div id="upcomingReminders" class="space-y-4">
+              <!-- Sample Reminder Card -->
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <h4 class="font-medium text-gray-800">Paracetamol 500mg</h4>
+                    <p class="text-sm text-gray-500 mt-1">1 tablet after meal</p>
+                    <div class="flex items-center mt-2">
+                      <i class="fas fa-clock text-blue-500 mr-2"></i>
+                      <span class="text-sm">Today at 08:00 AM</span>
+                    </div>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button class="text-green-500 hover:text-green-700">
+                      <i class="fas fa-check-circle"></i>
+                    </button>
+                    <button class="text-blue-500 hover:text-blue-700">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Empty State -->
+              <div id="noReminders" class="text-center py-8 hidden">
+                <i class="fas fa-pills text-gray-300 text-4xl mb-3"></i>
+                <p class="text-gray-500">No upcoming reminders</p>
+                <a href="add_reminder.html" class="mt-2 inline-block text-blue-600 hover:text-blue-500">Add your first reminder</a>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Adherence Chart -->
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Weekly Adherence</h3>
+            <div class="h-64">
+              <canvas id="adherenceChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Recent History -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Recent History</h3>
+            <a href="#" class="text-sm text-blue-600 hover:text-blue-500">View All</a>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medicine</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dosage</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyTable" class="bg-white divide-y divide-gray-200">
+                <!-- Sample Row -->
+                <tr>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">Ibuprofen</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">200mg</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Yesterday, 08:00 AM</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Taken</span>
+                  </td>
+                </tr>
+                
+                <!-- Empty State -->
+                <tr id="noHistory" class="hidden">
+                  <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
+                    No history available yet
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Initialize dashboard
+    auth.onAuthStateChanged((user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+      } else {
+        // Load user data
+        db.collection('users').doc(user.uid).get()
+          .then((doc) => {
+            if (doc.exists) {
+              const userData = doc.data();
+              document.getElementById('userName').textContent = userData.name;
+              document.getElementById('welcomeMessage').textContent = `Welcome back, ${userData.name.split(' ')[0]}!`;
+              document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2563EB&color=fff`;
+              
+              // Load upcoming reminders
+              loadReminders(user.uid);
+              // Load adherence data
+              loadAdherenceChart(user.uid);
+              // Load recent history
+              loadHistory(user.uid);
+            }
+          });
+      }
+    });
+
+    // Toggle sidebar
+    document.getElementById('toggleSidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+    });
+
+    // Sign out
+    document.getElementById('signOutBtn').addEventListener('click', () => {
+      auth.signOut().then(() => {
+        window.location.href = 'login.html';
+      });
+    });
+
+    // Load upcoming reminders
+    function loadReminders(userId) {
+      const now = new Date();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      db.collection('reminders')
+        .where('userId', '==', userId)
+        .where('nextReminder', '>=', now)
+        .where('nextReminder', '<=', endOfDay)
+        .orderBy('nextReminder', 'asc')
+        .limit(5)
+        .get()
+        .then((querySnapshot) => {
+          const upcomingReminders = document.getElementById('upcomingReminders');
+          const noReminders = document.getElementById('noReminders');
+          
+          // Clear existing sample data
+          upcomingReminders.innerHTML = '';
+          
+          if (querySnapshot.empty) {
+            noReminders.classList.remove('hidden');
+            document.getElementById('pendingReminders').textContent = '0';
+            return;
+          }
+          
+          document.getElementById('pendingReminders').textContent = querySnapshot.size;
+          noReminders.classList.add('hidden');
+          
+          querySnapshot.forEach((doc) => {
+            const reminder = doc.data();
+            const reminderTime = reminder.nextReminder.toDate();
+            const timeString = reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            const reminderCard = document.createElement('div');
+            reminderCard.className = 'border border-gray-200 rounded-lg p-4';
+            reminderCard.innerHTML = `
+              <div class="flex items-start justify-between">
+                <div>
+                  <h4 class="font-medium text-gray-800">${reminder.medicineName}</h4>
+                  <p class="text-sm text-gray-500 mt-1">${reminder.dosage}</p>
+                  <div class="flex items-center mt-2">
+                    <i class="fas fa-clock text-blue-500 mr-2"></i>
+                    <span class="text-sm">Today at ${timeString}</span>
+                  </div>
+                </div>
+                <div class="flex space-x-2">
+                  <button class="text-green-500 hover:text-green-700" onclick="markAsTaken('${doc.id}')">
+                    <i class="fas fa-check-circle"></i>
+                  </button>
+                  <button class="text-blue-500 hover:text-blue-700" onclick="editReminder('${doc.id}')">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+            
+            upcomingReminders.appendChild(reminderCard);
+          });
+        });
+    }
+
+    // Load adherence chart
+    function loadAdherenceChart(userId) {
+      const ctx = document.getElementById('adherenceChart').getContext('2d');
+      
+      // Sample data - in real app this would come from Firestore
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: 'Adherence Rate',
+            data: [100, 80, 90, 70, 85, 95, 100],
+            backgroundColor: '#3B82F6',
+            borderColor: '#2563EB',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Load recent history
+    function loadHistory(userId) {
+      db.collection('dose_logs')
+        .where('userId', '==', userId)
+        .orderBy('timestamp', 'desc')
+        .limit(5)
+        .get()
+        .then((querySnapshot) => {
+          const historyTable = document.getElementById('historyTable');
+          const noHistory = document.getElementById('noHistory');
+          
+          // Clear existing sample data
+          historyTable.innerHTML = '';
+          
+          if (querySnapshot.empty) {
+            noHistory.classList.remove('hidden');
+            return;
+          }
+          
+          noHistory.classList.add('hidden');
+          
+          querySnapshot.forEach((doc) => {
+            const log = doc.data();
+            const logTime = log.timestamp.toDate();
+            const timeString = logTime.toLocaleString([], { 
+              weekday: 'short', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+            
+            const statusClass = log.status === 'taken' ? 
+              'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            const statusText = log.status === 'taken' ? 'Taken' : 'Missed';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${log.medicineName}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.dosage}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${timeString}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+              </td>
+            `;
+            
+            historyTable.appendChild(row);
+          });
+        });
+    }
+
+    // Helper functions
+    function markAsTaken(reminderId) {
+      // Implementation would update Firestore
+      alert(`Marked reminder ${reminderId} as taken`);
+    }
+
+    function editReminder(reminderId) {
+      // Implementation would open edit form
+      alert(`Editing reminder ${reminderId}`);
+    }
+  </script>
+</body>
+</html>
