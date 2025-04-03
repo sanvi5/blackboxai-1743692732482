@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Reminder - Medicine Reminder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="config.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .waveform {
+      height: 40px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .waveform::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar (same as dashboard) -->
+    <div class="bg-white w-64 shadow-lg flex flex-col">
+      <div class="p-4 flex items-center justify-between border-b">
+        <div class="flex items-center">
+          <i class="fas fa-pills text-blue-600 text-2xl mr-3"></i>
+          <span class="font-bold text-xl">MedReminder</span>
+        </div>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto">
+        <nav class="p-4">
+          <div class="space-y-2">
+            <a href="dashboard.html" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-home mr-3"></i>
+              <span>Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-blue-600 bg-blue-50 rounded-lg">
+              <i class="fas fa-plus-circle mr-3"></i>
+              <span>Add Reminder</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-history mr-3"></i>
+              <span>History</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <i class="fas fa-user mr-3"></i>
+              <span>Profile</span>
+            </a>
+          </div>
+        </nav>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto">
+      <!-- Top Navigation -->
+      <header class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex items-center justify-between">
+          <h1 class="text-xl font-semibold text-gray-800">Add New Reminder</h1>
+          <div class="flex items-center space-x-4">
+            <div class="flex items-center">
+              <img id="userAvatar" class="h-8 w-8 rounded-full" src="https://ui-avatars.com/api/?name=User&background=2563EB&color=fff" alt="User">
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <main class="p-6">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <form id="reminderForm" class="space-y-6">
+            <!-- Medicine Information -->
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">Medicine Information</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label for="medicineName" class="block text-sm font-medium text-gray-700">Medicine Name*</label>
+                  <input type="text" id="medicineName" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. Paracetamol">
+                </div>
+                
+                <div>
+                  <label for="dosage" class="block text-sm font-medium text-gray-700">Dosage*</label>
+                  <div class="mt-1 flex rounded-md shadow-sm">
+                    <input type="text" id="dosageAmount" required
+                      class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Amount">
+                    <select id="dosageUnit"
+                      class="inline-flex items-center px-3 py-2 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                      <option>mg</option>
+                      <option>ml</option>
+                      <option>tablet(s)</option>
+                      <option>capsule(s)</option>
+                      <option>drop(s)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mt-6">
+                <label for="instructions" class="block text-sm font-medium text-gray-700">Additional Instructions</label>
+                <textarea id="instructions" rows="2"
+                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. Take after meal, with water"></textarea>
+              </div>
+            </div>
+            
+            <!-- Schedule -->
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">Schedule</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label for="time" class="block text-sm font-medium text-gray-700">Time*</label>
+                  <input type="time" id="time" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                  <label for="frequency" class="block text-sm font-medium text-gray-700">Frequency*</label>
+                  <select id="frequency" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="specific_days">Specific Days</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Weekly Days (hidden by default) -->
+              <div id="weeklyDaysContainer" class="mt-4 hidden">
+                <label class="block text-sm font-medium text-gray-700">Select Days</label>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="mon" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Mon</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="tue" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Tue</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="wed" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Wed</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="thu" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Thu</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="fri" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Fri</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="sat" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Sat</span>
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" name="weekday" value="sun" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2">Sun</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Voice Reminder -->
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">Voice Reminder</h2>
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 class="font-medium text-gray-800">Record Personal Reminder</h3>
+                    <p class="text-sm text-gray-500">Record a message that will play when it's time to take your medicine</p>
+                  </div>
+                  <div class="flex space-x-2">
+                    <button type="button" id="recordBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <i class="fas fa-microphone mr-2"></i>Record
+                    </button>
+                    <button type="button" id="stopBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500" disabled>
+                      <i class="fas fa-stop mr-2"></i>Stop
+                    </button>
+                  </div>
+                </div>
+                
+                <div id="audioContainer" class="hidden">
+                  <div class="flex items-center justify-between">
+                    <div class="waveform" id="waveform"></div>
+                    <button type="button" id="playBtn" class="ml-4 text-blue-600 hover:text-blue-800">
+                      <i class="fas fa-play-circle text-2xl"></i>
+                    </button>
+                  </div>
+                  <p class="mt-2 text-sm text-gray-500">Recording duration: <span id="recordingTime">0:00</span></p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Emergency Contact -->
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">Emergency Contact (Optional)</h2>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label for="contactName" class="block text-sm font-medium text-gray-700">Name</label>
+                  <input type="text" id="contactName"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                  <label for="contactPhone" class="block text-sm font-medium text-gray-700">Phone</label>
+                  <input type="tel" id="contactPhone"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                  <label for="contactEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                  <input type="email" id="contactEmail"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-4">
+              <button type="button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Cancel
+              </button>
+              <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Save Reminder
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Check authentication
+    auth.onAuthStateChanged((user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+      } else {
+        // Load user data for avatar
+        db.collection('users').doc(user.uid).get()
+          .then((doc) => {
+            if (doc.exists) {
+              const userData = doc.data();
+              document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=2563EB&color=fff`;
+            }
+          });
+      }
+    });
+
+    // Handle frequency selection
+    document.getElementById('frequency').addEventListener('change', (e) => {
+      const weeklyDaysContainer = document.getElementById('weeklyDaysContainer');
+      if (e.target.value === 'weekly' || e.target.value === 'specific_days') {
+        weeklyDaysContainer.classList.remove('hidden');
+      } else {
+        weeklyDaysContainer.classList.add('hidden');
+      }
+    });
+
+    // Voice recording functionality
+    let mediaRecorder;
+    let audioChunks = [];
+    let recordingStartTime;
+    let timerInterval;
+    
+    document.getElementById('recordBtn').addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (e) => {
+          audioChunks.push(e.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          clearInterval(timerInterval);
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Show audio player
+          document.getElementById('audioContainer').classList.remove('hidden');
+          document.getElementById('playBtn').onclick = () => {
+            new Audio(audioUrl).play();
+          };
+          
+          // Reset recording UI
+          document.getElementById('recordBtn').disabled = false;
+          document.getElementById('stopBtn').disabled = true;
+        };
+        
+        // Start recording
+        audioChunks = [];
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        timerInterval = setInterval(updateRecordingTime, 1000);
+        
+        // Update UI
+        document.getElementById('recordBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('audioContainer').classList.add('hidden');
+        
+      } catch (err) {
+        alert('Could not access microphone. Please check permissions.');
+        console.error('Recording error:', err);
+      }
+    });
+    
+    document.getElementById('stopBtn').addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        // Stop all tracks
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+    });
+    
+    function updateRecordingTime() {
+      const seconds = Math.floor((Date.now() - recordingStartTime) / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      document.getElementById('recordingTime').textContent = 
+        `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+    }
+
+    // Form submission
+    document.getElementById('reminderForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const user = auth.currentUser;
+      if (!user) {
+        alert('Please sign in first');
+        window.location.href = 'login.html';
+        return;
+      }
+      
+      // Get form values
+      const medicineName = document.getElementById('medicineName').value;
+      const dosage = `${document.getElementById('dosageAmount').value} ${document.getElementById('dosageUnit').value}`;
+      const instructions = document.getElementById('instructions').value;
+      const time = document.getElementById('time').value;
+      const frequency = document.getElementById('frequency').value;
+      
+      // Calculate next reminder time
+      const [hours, minutes] = time.split(':').map(Number);
+      const now = new Date();
+      let nextReminder = new Date();
+      nextReminder.setHours(hours, minutes, 0, 0);
+      
+      // If time already passed today, set for tomorrow
+      if (nextReminder < now) {
+        nextReminder.setDate(nextReminder.getDate() + 1);
+      }
+      
+      // Save to Firestore
+      db.collection('reminders').add({
+        userId: user.uid,
+        medicineName,
+        dosage,
+        instructions,
+        time,
+        frequency,
+        nextReminder: firebase.firestore.Timestamp.fromDate(nextReminder),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        active: true
+      })
+      .then(() => {
+        alert('Reminder saved successfully!');
+        window.location.href = 'dashboard.html';
+      })
+      .catch((error) => {
+        alert('Error saving reminder: ' + error.message);
+      });
+    });
+  </script>
+</body>
+</html>
